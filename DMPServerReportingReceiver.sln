@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DMPServerReportingReceiver", "DMPServerReportingReceiver\DMPServerReportingReceiver.csproj", "{40F2E7E7-58C4-47CC-8FF0-FD19ECACB1DC}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{40F2E7E7-58C4-47CC-8FF0-FD19ECACB1DC}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{40F2E7E7-58C4-47CC-8FF0-FD19ECACB1DC}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{40F2E7E7-58C4-47CC-8FF0-FD19ECACB1DC}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{40F2E7E7-58C4-47CC-8FF0-FD19ECACB1DC}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(MonoDevelopProperties) = preSolution
+		StartupItem = DMPServerReportingReceiver\DMPServerReportingReceiver.csproj
+	EndGlobalSection
+EndGlobal
