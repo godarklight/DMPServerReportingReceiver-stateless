@@ -59,8 +59,8 @@ namespace DMPServerReportingReceiver
                 while (deleteClients.TryDequeue(out deleteClient))
                 {
                     Dictionary<string, object> offlineParams = new Dictionary<string, object>();
-                    offlineParams["hash"] = deleteClient.serverHash;
-                    string mySql = "CALL gameserveroffline('?hash')";
+                    offlineParams["@hash"] = deleteClient.serverHash;
+                    string mySql = "CALL gameserveroffline(@hash)";
                     databaseConnection.ExecuteNonReader(mySql, offlineParams);
 
                     //Treat the clients list as immuteable - Prevents throws while iterating the list.

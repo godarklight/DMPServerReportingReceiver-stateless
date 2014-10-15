@@ -31,7 +31,6 @@ namespace DMPServerReportingReceiver
                 int protocolVersion = mr.Read<int>();
                 string programVersion = mr.Read<string>();
                 int maxPlayers = mr.Read<int>();
-                int playerCount = mr.Read<int>();
                 int modControl = mr.Read<int>();
                 string modControlSha = mr.Read<string>();
                 int gameMode = mr.Read<int>();
@@ -49,44 +48,39 @@ namespace DMPServerReportingReceiver
                 //Check if this is a new server
                 client.serverHash = serverHash;
                 Dictionary<string, object> hashParameters = new Dictionary<string, object>();
-                hashParameters["hash"] = serverHash;
-                Console.WriteLine("Init: " + client.initialized);
+                hashParameters["@hash"] = serverHash;
 
                 //Initialize if needed
                 if (!client.initialized)
                 {
                     client.initialized = true;
-                    string sqlQuery = "CALL gameserverinit('?serverhash', '?namex', '?descriptionx', '?gameportx', '?gameaddressx', '?protocolx', '?programversion', '?maxplayersx', '?playercountx', '?modcontrolx', '?modcontrolshax', '?gamemodex', '?cheatsx', '?warpmodex', '?universex', '?bannerx', '?homepagex', '?httpportx', '?adminx', '?teamx', '?locationx', '?fixedipx');";
-                    Console.WriteLine("===");
-                    Console.WriteLine(sqlQuery);
-                    Console.WriteLine("===");
+                    string sqlQuery = "CALL gameserverinit(@serverhash, @namex, @descriptionx, @gameportx, @gameaddressx, @protocolx, @programversion, @maxplayersx, @modcontrolx, @modcontrolshax, @gamemodex, @cheatsx, @warpmodex, @universex, @bannerx, @homepagex, @httpportx, @adminx, @teamx, @locationx, @fixedipx);";
                     Dictionary<string, object> parameters = new Dictionary<string, object>();
-                    parameters["serverhash"] = serverHash;
-                    parameters["namex"] = serverName;
+                    parameters["@serverhash"] = serverHash;
+                    parameters["@namex"] = serverName;
                     if (serverName.Length > 255)
                     {
                         serverName.Substring(0, 255);
                     }
-                    parameters["descriptionx"] = description;
-                    parameters["gameportx"] = gamePort;
-                    parameters["gameaddressx"] = gameAddress;
-                    parameters["protocolx"] = protocolVersion;
-                    parameters["programversion"] = programVersion;
-                    parameters["maxplayersx"] = maxPlayers;
-                    parameters["playercountx"] = playerCount;
-                    parameters["modcontrolx"] = modControl;
-                    parameters["modcontrolshax"] = modControlSha;
-                    parameters["gamemodex"] = gameMode;
-                    parameters["cheatsx"] = cheats;
-                    parameters["warpmodex"] = warpMode;
-                    parameters["universex"] = universeSize;
-                    parameters["bannerx"] = banner;
-                    parameters["homepagex"] = homepage;
-                    parameters["httpportx"] = httpPort;
-                    parameters["adminx"] = admin;
-                    parameters["teamx"] = team;
-                    parameters["locationx"] = location;
-                    parameters["fixedipx"] = fixedIP;
+                    parameters["@descriptionx"] = description;
+                    parameters["@gameportx"] = gamePort;
+                    parameters["@gameaddressx"] = gameAddress;
+                    parameters["@protocolx"] = protocolVersion;
+                    parameters["@programversion"] = programVersion;
+                    parameters["@maxplayersx"] = maxPlayers;
+                    parameters["@modcontrolx"] = modControl;
+                    parameters["@modcontrolshax"] = modControlSha;
+                    parameters["@gamemodex"] = gameMode;
+                    parameters["@cheatsx"] = cheats;
+                    parameters["@warpmodex"] = warpMode;
+                    parameters["@universex"] = universeSize;
+                    parameters["@bannerx"] = banner;
+                    parameters["@homepagex"] = homepage;
+                    parameters["@httpportx"] = httpPort;
+                    parameters["@adminx"] = admin;
+                    parameters["@teamx"] = team;
+                    parameters["@locationx"] = location;
+                    parameters["@fixedipx"] = fixedIP;
                     databaseConnection.ExecuteNonReader(sqlQuery, parameters);
                 }
 
@@ -96,9 +90,9 @@ namespace DMPServerReportingReceiver
                     foreach (string connectedPlayer in players)
                     {
                         Dictionary<string, object> playerParams = new Dictionary<string, object>();
-                        playerParams["hash"] = serverHash;
-                        playerParams["player"] = connectedPlayer;
-                        string sqlQuery = "CALL gameserverplayer('?hash' ,'?player', '1')";
+                        playerParams["@hash"] = serverHash;
+                        playerParams["@player"] = connectedPlayer;
+                        string sqlQuery = "CALL gameserverplayer(@hash, @player, '1')";
                         databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
                     }
                 }
@@ -128,7 +122,7 @@ namespace DMPServerReportingReceiver
                         Dictionary<string, object> playerParams = new Dictionary<string, object>();
                         playerParams["hash"] = serverHash;
                         playerParams["player"] = player;
-                        string sqlQuery = "CALL gameserverplayer('?hash' ,'?player', '1')";
+                        string sqlQuery = "CALL gameserverplayer(@hash ,@player, '1')";
                         databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
                     }
                     //Remove old players
@@ -137,7 +131,7 @@ namespace DMPServerReportingReceiver
                         Dictionary<string, object> playerParams = new Dictionary<string, object>();
                         playerParams["hash"] = serverHash;
                         playerParams["player"] = player;
-                        string sqlQuery = "CALL gameserverplayer('?hash' ,'?player', '0')";
+                        string sqlQuery = "CALL gameserverplayer(@hash ,@player, '0')";
                         databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
                     }
                 }
