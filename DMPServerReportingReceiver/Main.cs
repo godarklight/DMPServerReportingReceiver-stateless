@@ -31,10 +31,14 @@ namespace DMPServerReportingReceiver
         private const int MAX_PAYLOAD_SIZE = 5000 * 1024;
         //Message handlers
         private static Dictionary<int, ConnectionCallback> registeredHandlers = new Dictionary<int, ConnectionCallback>();
+        public static DatabaseConnection databaseConnection = new DatabaseConnection();
 
         public static void Main()
         {
             programClock.Start();
+            //Connect to database
+            databaseConnection.Connect();
+            //Register handlers
             registeredHandlers.Add((int)MessageTypes.HEARTBEAT, MessageHandlers.HandleHeartbeat);
             registeredHandlers.Add((int)MessageTypes.REPORTING_VERSION_1, MessageHandlers.HandleReportingVersion1);
             StartServer();
@@ -49,12 +53,16 @@ namespace DMPServerReportingReceiver
                     newClientsList.Add(addClient);
                     clients = newClientsList;
                     connectedClients = clients.Count;
-                    Console.WriteLine("New connection from " + addClient.address.ToString() + ", connected: " + connectedClients);
                 }
                 //Delete client
                 ClientObject deleteClient;
                 while (deleteClients.TryDequeue(out deleteClient))
                 {
+                    Dictionary<string, object> offlineParams = new Dictionary<string, object>();
+                    offlineParams["hash"] = deleteClient.serverHash;
+                    string mySql = "CALL gameserveroffline('?hash')";
+                    databaseConnection.ExecuteNonReader(mySql, offlineParams);
+
                     //Treat the clients list as immuteable - Prevents throws while iterating the list.
                     List<ClientObject> newClientsList = new List<ClientObject>(clients);
                     if (newClientsList.Contains(deleteClient))
@@ -99,6 +107,7 @@ namespace DMPServerReportingReceiver
             serverListener = new TcpListener(IPAddress.Any, 9001);
             serverListener.Start();
             serverListener.BeginAcceptTcpClient(AcceptCallback, null);
+            Console.WriteLine("Listening for connections!");
         }
 
         private static void AcceptCallback(IAsyncResult ar)
@@ -120,7 +129,7 @@ namespace DMPServerReportingReceiver
 
         private static void SetupNewClient(TcpClient clientConnection)
         {
-            //Create a new ClientObject for the reporting client.
+            //Create a new ClientObject for the reporting client
             ClientObject newClient = new ClientObject();
             newClient.clientConnection = clientConnection;
             newClient.incomingMessage = new NetworkMessage();
@@ -131,6 +140,7 @@ namespace DMPServerReportingReceiver
             try
             {
                 newClient.address = (IPEndPoint)newClient.clientConnection.Client.RemoteEndPoint;
+                Console.WriteLine("New connection from " + newClient.address.ToString() + ", connected: " + (connectedClients + 1));
                 newClient.clientConnection.GetStream().BeginRead(newClient.incomingMessage.data, newClient.incomingMessage.data.Length - newClient.bytesToReceive, newClient.bytesToReceive, ReceiveCallback, newClient);
             }
             catch (Exception e)
@@ -199,7 +209,14 @@ namespace DMPServerReportingReceiver
         {
             if (registeredHandlers.ContainsKey(receivedMessage.type))
             {
-                registeredHandlers[receivedMessage.type](client, receivedMessage.data);
+                try
+                {
+                    registeredHandlers[receivedMessage.type](client, receivedMessage.data);
+                }
+                catch (Exception e)
+                {
+                    Console.WriteLine("Error processing type " + receivedMessage.type + ", Exception :" + e);
+                }
             }
         }
     }

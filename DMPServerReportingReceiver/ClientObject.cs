@@ -13,6 +13,10 @@ namespace DMPServerReportingReceiver
         public bool isRecevingPayload = false;
         public int bytesToReceive = 8;
         public long lastReceiveTime = long.MinValue;
+        public string serverHash;
+        public string[] connectedPlayers;
+        public bool initialized;
+        public bool reportedOnline;
     }
 }
 
