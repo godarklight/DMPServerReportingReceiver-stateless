@@ -81,6 +81,7 @@ namespace DMPServerReportingReceiver
                     parameters["@teamx"] = team;
                     parameters["@locationx"] = location;
                     parameters["@fixedipx"] = fixedIP;
+                    Console.WriteLine("Server " + serverHash + " is online!");
                     databaseConnection.ExecuteNonReader(sqlQuery, parameters);
                 }
 
@@ -89,6 +90,7 @@ namespace DMPServerReportingReceiver
                     //Report connected players as connected
                     foreach (string connectedPlayer in players)
                     {
+                        Console.WriteLine("Player " + connectedPlayer + " joined " + serverHash);
                         Dictionary<string, object> playerParams = new Dictionary<string, object>();
                         playerParams["@hash"] = serverHash;
                         playerParams["@player"] = connectedPlayer;
@@ -98,6 +100,10 @@ namespace DMPServerReportingReceiver
                 }
                 else
                 {
+                    foreach (string player in players)
+                    {
+                        Console.WriteLine("Player: " + player);
+                    }
                     //Take all the currently connected players and remove the players that were connected already to generate a list of players to be added
                     List<string> addList = new List<string>(players);
                     foreach (string player in client.connectedPlayers)
@@ -111,14 +117,15 @@ namespace DMPServerReportingReceiver
                     List<string> removeList = new List<string>(client.connectedPlayers);
                     foreach (string player in players)
                     {
-                        if (addList.Contains(player))
+                        if (removeList.Contains(player))
                         {
-                            addList.Remove(player);
+                            removeList.Remove(player);
                         }
                     }
                     //Add new players
                     foreach (string player in addList)
                     {
+                        Console.WriteLine("Player " + player + " joined " + serverHash);
                         Dictionary<string, object> playerParams = new Dictionary<string, object>();
                         playerParams["hash"] = serverHash;
                         playerParams["player"] = player;
@@ -128,6 +135,7 @@ namespace DMPServerReportingReceiver
                     //Remove old players
                     foreach (string player in removeList)
                     {
+                        Console.WriteLine("Player " + player + " left " + serverHash);
                         Dictionary<string, object> playerParams = new Dictionary<string, object>();
                         playerParams["hash"] = serverHash;
                         playerParams["player"] = player;
@@ -139,7 +147,7 @@ namespace DMPServerReportingReceiver
                 client.connectedPlayers = players;
 
 
-                Console.WriteLine("Received report from " + serverName + " (" + client.address + "), Protocol " + protocolVersion + ", Program Version: " + programVersion);
+                Console.WriteLine("Handled report from " + serverName + " (" + client.address + "), Protocol " + protocolVersion + ", Program Version: " + programVersion);
             }
         }
     }

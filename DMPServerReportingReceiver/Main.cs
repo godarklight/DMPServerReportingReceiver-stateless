@@ -26,7 +26,7 @@ namespace DMPServerReportingReceiver
         private static ConcurrentQueue<ClientObject> deleteClients = new ConcurrentQueue<ClientObject>();
         private static Stopwatch programClock = new Stopwatch();
         //Server disappears after 60 seconds
-        private const int CONNECTION_TIMEOUT = 60000;
+        private const int CONNECTION_TIMEOUT = 30000;
         //5MB max message size
         private const int MAX_PAYLOAD_SIZE = 5000 * 1024;
         //Message handlers
@@ -42,6 +42,7 @@ namespace DMPServerReportingReceiver
             registeredHandlers.Add((int)MessageTypes.HEARTBEAT, MessageHandlers.HandleHeartbeat);
             registeredHandlers.Add((int)MessageTypes.REPORTING_VERSION_1, MessageHandlers.HandleReportingVersion1);
             StartServer();
+            ExpireAllOnlineServers();
             while (true)
             {
                 //Add client
@@ -58,37 +59,52 @@ namespace DMPServerReportingReceiver
                 ClientObject deleteClient;
                 while (deleteClients.TryDequeue(out deleteClient))
                 {
-                    Dictionary<string, object> offlineParams = new Dictionary<string, object>();
-                    offlineParams["@hash"] = deleteClient.serverHash;
-                    string mySql = "CALL gameserveroffline(@hash)";
-                    databaseConnection.ExecuteNonReader(mySql, offlineParams);
-
                     //Treat the clients list as immuteable - Prevents throws while iterating the list.
                     List<ClientObject> newClientsList = new List<ClientObject>(clients);
                     if (newClientsList.Contains(deleteClient))
                     {
+                        CallServerOffline(deleteClient.serverHash);
                         newClientsList.Remove(deleteClient);
-                    }
-                    clients = newClientsList;
-                    connectedClients = clients.Count;
-                    Console.WriteLine("Dropped connection from " + deleteClient.address.ToString() + ", connected: " + connectedClients);
-                    try
-                    {
-                        if (deleteClient.clientConnection.Connected)
+                        clients = newClientsList;
+                        connectedClients = clients.Count;
+                        Console.WriteLine("Dropped connection from " + deleteClient.address.ToString() + ", connected: " + connectedClients);
+                        try
                         {
-                            deleteClient.clientConnection.GetStream().Close();
-                            deleteClient.clientConnection.GetStream().Dispose();
-                            deleteClient.clientConnection.Close();
+                            if (deleteClient.clientConnection.Connected)
+                            {
+                                deleteClient.clientConnection.GetStream().Close();
+                                deleteClient.clientConnection.GetStream().Dispose();
+                                deleteClient.clientConnection.Close();
+                            }
                         }
-                    }
-                    catch
-                    {
-                        //Don't care.
+                        catch
+                        {
+                            //Don't care.
+                        }
                     }
                 }
                 CheckTimeouts();
                 Thread.Sleep(500);
             }
+        }
+
+        private static void ExpireAllOnlineServers()
+        {
+            object[][] result = databaseConnection.ExecuteReader("SELECT hash FROM server_statusnow");
+            foreach (object[] entry in result)
+            {
+                string hash = (string)entry[0];
+                Console.WriteLine("Taking stale server " + (string)entry[0] + " offline!");
+                CallServerOffline(hash);
+            }
+        }
+
+        private static void CallServerOffline(string hash)
+        {
+            Dictionary<string, object> offlineParams = new Dictionary<string, object>();
+            offlineParams["@hash"] = hash;
+            string mySql = "CALL gameserveroffline(@hash)";
+            databaseConnection.ExecuteNonReader(mySql, offlineParams);
         }
 
         private static void CheckTimeouts()
@@ -155,8 +171,12 @@ namespace DMPServerReportingReceiver
             ClientObject client = (ClientObject)ar.AsyncState;
             try
             {
-                client.bytesToReceive -= client.clientConnection.GetStream().EndRead(ar);
-                client.lastReceiveTime = programClock.ElapsedMilliseconds;
+                int bytesReceived = client.clientConnection.GetStream().EndRead(ar);
+                client.bytesToReceive -= bytesReceived;
+                if (bytesReceived > 0)
+                {
+                    client.lastReceiveTime = programClock.ElapsedMilliseconds;
+                }
                 if (client.bytesToReceive == 0)
                 {
                     //We have a header or a payload
