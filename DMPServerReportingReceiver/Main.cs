@@ -90,13 +90,7 @@ namespace DMPServerReportingReceiver
 
         private static void ExpireAllOnlineServers()
         {
-            object[][] result = databaseConnection.ExecuteReader("SELECT hash FROM server_statusnow");
-            foreach (object[] entry in result)
-            {
-                string hash = (string)entry[0];
-                Console.WriteLine("Taking stale server " + (string)entry[0] + " offline!");
-                CallServerOffline(hash);
-            }
+            databaseConnection.ExecuteNonReader("CALL gameserverscleanup()");
         }
 
         private static void CallServerOffline(string hash)
