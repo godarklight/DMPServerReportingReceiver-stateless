@@ -16,7 +16,6 @@ namespace DMPServerReportingReceiver
         public string serverHash;
         public string[] connectedPlayers;
         public bool initialized;
-        public bool reportedOnline;
     }
 }
 

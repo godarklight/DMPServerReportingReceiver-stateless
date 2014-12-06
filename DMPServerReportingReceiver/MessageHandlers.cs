@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using MessageStream;
 
 namespace DMPServerReportingReceiver
@@ -21,6 +22,8 @@ namespace DMPServerReportingReceiver
 
         public static void HandleReportingVersion1(ClientObject client, byte[] messageData)
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
             using (MessageReader mr = new MessageReader(messageData, false))
             {
                 string serverHash = mr.Read<string>();
@@ -146,8 +149,8 @@ namespace DMPServerReportingReceiver
                 //Save connected players for tracking
                 client.connectedPlayers = players;
 
-
-                Console.WriteLine("Handled report from " + serverName + " (" + client.address + "), Protocol " + protocolVersion + ", Program Version: " + programVersion);
+                sw.Stop();
+                Console.WriteLine("Handled report from " + serverName + " (" + client.address + "), Protocol " + protocolVersion + ", Program Version: " + programVersion + ", Time: " + sw.ElapsedMilliseconds);
             }
         }
     }

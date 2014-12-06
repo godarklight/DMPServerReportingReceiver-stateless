@@ -7,16 +7,6 @@ namespace DMPServerReportingReceiver
     public class DatabaseConnection : IDisposable
     {
         private DatabaseSettings settings = new DatabaseSettings();
-        private MySqlConnection connection;
-
-        public void Connect()
-        {
-            if ((connection == null) || (connection.State != System.Data.ConnectionState.Open))
-            {
-                connection = new MySqlConnection(settings.ToConnectionString());
-                connection.Open();
-            }
-        }
 
         public int ExecuteNonReader(string mySql)
         {
@@ -26,16 +16,20 @@ namespace DMPServerReportingReceiver
         public int ExecuteNonReader(string mySql, Dictionary<string,object> parameters)
         {
             int returnValue;
-            using (MySqlCommand command = new MySqlCommand(mySql, connection))
+            using (MySqlConnection connection = new MySqlConnection(settings.ToConnectionString()))
             {
-                if (parameters != null)
+                connection.Open();
+                using (MySqlCommand command = new MySqlCommand(mySql, connection))
                 {
-                    foreach (KeyValuePair<string,object> kvp in parameters)
+                    if (parameters != null)
                     {
-                        command.Parameters.AddWithValue(kvp.Key, kvp.Value);
+                        foreach (KeyValuePair<string,object> kvp in parameters)
+                        {
+                            command.Parameters.AddWithValue(kvp.Key, kvp.Value);
+                        }
                     }
+                    returnValue = command.ExecuteNonQuery();
                 }
-                returnValue = command.ExecuteNonQuery();
             }
             return returnValue;
         }
@@ -48,16 +42,20 @@ namespace DMPServerReportingReceiver
         public T ExecuteScalar<T>(string mySql, Dictionary<string,object> parameters)
         {
             T returnValue;
-            using (MySqlCommand command = new MySqlCommand(mySql, connection))
+            using (MySqlConnection connection = new MySqlConnection(settings.ToConnectionString()))
             {
-                if (parameters != null)
+                connection.Open();
+                using (MySqlCommand command = new MySqlCommand(mySql, connection))
                 {
-                    foreach (KeyValuePair<string,object> kvp in parameters)
+                    if (parameters != null)
                     {
-                        command.Parameters.AddWithValue(kvp.Key, kvp.Value);
+                        foreach (KeyValuePair<string,object> kvp in parameters)
+                        {
+                            command.Parameters.AddWithValue(kvp.Key, kvp.Value);
+                        }
                     }
+                    returnValue = (T)command.ExecuteScalar();
                 }
-                returnValue = (T)command.ExecuteScalar();
             }
             return returnValue;
         }
@@ -70,26 +68,30 @@ namespace DMPServerReportingReceiver
         public object[][] ExecuteReader(string mySql, Dictionary<string,object> parameters)
         {
             object[][] returnValue;
-            using (MySqlCommand command = new MySqlCommand(mySql, connection))
+            using (MySqlConnection connection = new MySqlConnection(settings.ToConnectionString()))
             {
-                if (parameters != null)
+                connection.Open();
+                using (MySqlCommand command = new MySqlCommand(mySql, connection))
                 {
-                    foreach (KeyValuePair<string,object> kvp in parameters)
+                    if (parameters != null)
                     {
-                        command.Parameters.AddWithValue(kvp.Key, kvp.Value);
+                        foreach (KeyValuePair<string,object> kvp in parameters)
+                        {
+                            command.Parameters.AddWithValue(kvp.Key, kvp.Value);
+                        }
                     }
-                }
-                List<object[]> fieldData = new List<object[]>();
-                using (MySqlDataReader reader = command.ExecuteReader())
-                {
-                    while (reader.Read())
+                    List<object[]> fieldData = new List<object[]>();
+                    using (MySqlDataReader reader = command.ExecuteReader())
                     {
-                        object[] fields = new object[reader.FieldCount];
-                        reader.GetValues(fields);
-                        fieldData.Add(fields);
+                        while (reader.Read())
+                        {
+                            object[] fields = new object[reader.FieldCount];
+                            reader.GetValues(fields);
+                            fieldData.Add(fields);
+                        }
                     }
+                    returnValue = fieldData.ToArray();
                 }
-                returnValue = fieldData.ToArray();
             }
             return returnValue;
         }

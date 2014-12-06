@@ -21,9 +21,7 @@ namespace DMPServerReportingReceiver
         private static TcpListener serverListener;
         //State tracking
         private static int connectedClients = 0;
-        private static ConcurrentQueue<ClientObject> addClients = new ConcurrentQueue<ClientObject>();
         private static List<ClientObject> clients = new List<ClientObject>();
-        private static ConcurrentQueue<ClientObject> deleteClients = new ConcurrentQueue<ClientObject>();
         private static Stopwatch programClock = new Stopwatch();
         //Server disappears after 60 seconds
         private const int CONNECTION_TIMEOUT = 30000;
@@ -36,8 +34,6 @@ namespace DMPServerReportingReceiver
         public static void Main()
         {
             programClock.Start();
-            //Connect to database
-            databaseConnection.Connect();
             //Register handlers
             registeredHandlers.Add((int)MessageTypes.HEARTBEAT, MessageHandlers.HandleHeartbeat);
             registeredHandlers.Add((int)MessageTypes.REPORTING_VERSION_1, MessageHandlers.HandleReportingVersion1);
@@ -45,46 +41,48 @@ namespace DMPServerReportingReceiver
             ExpireAllOnlineServers();
             while (true)
             {
-                //Add client
-                ClientObject addClient;
-                while (addClients.TryDequeue(out addClient))
-                {
-                    //Treat the clients list as immuteable - Prevents throws while iterating the list.
-                    List<ClientObject> newClientsList = new List<ClientObject>(clients);
-                    newClientsList.Add(addClient);
-                    clients = newClientsList;
-                    connectedClients = clients.Count;
-                }
-                //Delete client
-                ClientObject deleteClient;
-                while (deleteClients.TryDequeue(out deleteClient))
-                {
-                    //Treat the clients list as immuteable - Prevents throws while iterating the list.
-                    List<ClientObject> newClientsList = new List<ClientObject>(clients);
-                    if (newClientsList.Contains(deleteClient))
-                    {
-                        CallServerOffline(deleteClient.serverHash);
-                        newClientsList.Remove(deleteClient);
-                        clients = newClientsList;
-                        connectedClients = clients.Count;
-                        Console.WriteLine("Dropped connection from " + deleteClient.address.ToString() + ", connected: " + connectedClients);
-                        try
-                        {
-                            if (deleteClient.clientConnection.Connected)
-                            {
-                                deleteClient.clientConnection.GetStream().Close();
-                                deleteClient.clientConnection.GetStream().Dispose();
-                                deleteClient.clientConnection.Close();
-                            }
-                        }
-                        catch
-                        {
-                            //Don't care.
-                        }
-                    }
-                }
                 CheckTimeouts();
                 Thread.Sleep(500);
+            }
+        }
+
+        private static void ConnectClient(ClientObject newClient)
+        {
+            lock (clients)
+            {
+                clients.Add(newClient);
+                connectedClients = clients.Count;
+                Console.WriteLine("New connection from " + newClient.address.ToString() + ", connected: " + connectedClients);
+            }
+        }
+
+        public static void DisconnectClient(ClientObject disconnectClient)
+        {
+            lock (clients)
+            {
+                if (clients.Contains(disconnectClient))
+                {
+                    clients.Remove(disconnectClient);
+                    if (disconnectClient.initialized)
+                    {
+                        CallServerOffline(disconnectClient.serverHash);
+                    }
+                    connectedClients = clients.Count;
+                    Console.WriteLine("Dropped connection from " + disconnectClient.address.ToString() + ", connected: " + connectedClients);
+                    try
+                    {
+                        if (disconnectClient.clientConnection.Connected)
+                        {
+                            disconnectClient.clientConnection.GetStream().Close();
+                            disconnectClient.clientConnection.GetStream().Dispose();
+                            disconnectClient.clientConnection.Close();
+                        }
+                    }
+                    catch
+                    {
+                        //Don't care.
+                    }
+                }
             }
         }
 
@@ -103,11 +101,14 @@ namespace DMPServerReportingReceiver
 
         private static void CheckTimeouts()
         {
-            foreach (ClientObject client in clients)
+            lock (clients)
             {
-                if (programClock.ElapsedMilliseconds > (client.lastReceiveTime + CONNECTION_TIMEOUT))
+                foreach (ClientObject client in clients.ToArray())
                 {
-                    deleteClients.Enqueue(client);
+                    if (programClock.ElapsedMilliseconds > (client.lastReceiveTime + CONNECTION_TIMEOUT))
+                    {
+                        DisconnectClient(client);
+                    }
                 }
             }
         }
@@ -146,17 +147,16 @@ namespace DMPServerReportingReceiver
             newClient.incomingMessage.data = new byte[8];
             newClient.bytesToReceive = 8;
             newClient.lastReceiveTime = programClock.ElapsedMilliseconds;
-            addClients.Enqueue(newClient);
+            newClient.address = (IPEndPoint)newClient.clientConnection.Client.RemoteEndPoint;
+            ConnectClient(newClient);
             try
             {
-                newClient.address = (IPEndPoint)newClient.clientConnection.Client.RemoteEndPoint;
-                Console.WriteLine("New connection from " + newClient.address.ToString() + ", connected: " + (connectedClients + 1));
                 newClient.clientConnection.GetStream().BeginRead(newClient.incomingMessage.data, newClient.incomingMessage.data.Length - newClient.bytesToReceive, newClient.bytesToReceive, ReceiveCallback, newClient);
             }
             catch (Exception e)
             {
                 Console.WriteLine("Error setting up new client, Exception: " + e);
-                deleteClients.Enqueue(newClient);
+                DisconnectClient(newClient);
             }
         }
 
@@ -182,7 +182,7 @@ namespace DMPServerReportingReceiver
                         if (messagePayload > MAX_PAYLOAD_SIZE || MAX_PAYLOAD_SIZE < 0)
                         {
                             Console.WriteLine("Invalid TCP message. Disconnecting client.");
-                            deleteClients.Enqueue(client);
+                            DisconnectClient(client);
                             return;
                         }
                         if (messagePayload == 0)
@@ -215,7 +215,7 @@ namespace DMPServerReportingReceiver
             catch (Exception e)
             {
                 Console.WriteLine("Error reading data, Exception: " + e);
-                deleteClients.Enqueue(client);
+                DisconnectClient(client);
             }
         }
 
