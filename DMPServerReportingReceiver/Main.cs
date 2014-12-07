@@ -13,6 +13,7 @@ namespace DMPServerReportingReceiver
     {
         HEARTBEAT,
         REPORTING_VERSION_1,
+        REPORTING_VERSION_2,
     }
 
     public class MainClass
@@ -37,6 +38,7 @@ namespace DMPServerReportingReceiver
             //Register handlers
             registeredHandlers.Add((int)MessageTypes.HEARTBEAT, MessageHandlers.HandleHeartbeat);
             registeredHandlers.Add((int)MessageTypes.REPORTING_VERSION_1, MessageHandlers.HandleReportingVersion1);
+            registeredHandlers.Add((int)MessageTypes.REPORTING_VERSION_2, MessageHandlers.HandleReportingVersion2);
             StartServer();
             ExpireAllOnlineServers();
             while (true)
