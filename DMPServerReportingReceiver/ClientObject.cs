@@ -14,7 +14,6 @@ namespace DMPServerReportingReceiver
         public int bytesToReceive = 8;
         public long lastReceiveTime = long.MinValue;
         public string serverHash;
-        public string[] connectedPlayers;
         public bool initialized;
     }
 }

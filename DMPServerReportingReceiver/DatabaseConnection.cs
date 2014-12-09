@@ -6,7 +6,7 @@ namespace DMPServerReportingReceiver
 {
     public class DatabaseConnection : IDisposable
     {
-        private DatabaseSettings settings = new DatabaseSettings();
+        public DatabaseSettings settings = new DatabaseSettings();
 
         public int ExecuteNonReader(string mySql)
         {

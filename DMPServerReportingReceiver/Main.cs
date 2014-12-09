@@ -39,6 +39,7 @@ namespace DMPServerReportingReceiver
             registeredHandlers.Add((int)MessageTypes.HEARTBEAT, MessageHandlers.HandleHeartbeat);
             registeredHandlers.Add((int)MessageTypes.REPORTING_VERSION_1, MessageHandlers.HandleReportingVersion1);
             registeredHandlers.Add((int)MessageTypes.REPORTING_VERSION_2, MessageHandlers.HandleReportingVersion2);
+            SetupDatabase();
             StartServer();
             ExpireAllOnlineServers();
             while (true)
@@ -46,6 +47,12 @@ namespace DMPServerReportingReceiver
                 CheckTimeouts();
                 Thread.Sleep(500);
             }
+        }
+
+        private static void SetupDatabase()
+        {
+            databaseConnection.ExecuteNonReader("CREATE DATABASE IF NOT EXISTS " + databaseConnection.settings.database);
+            databaseConnection.ExecuteNonReader("CREATE TABLE IF NOT EXISTS `" + databaseConnection.settings.database + "` (`serverHash` varchar(255) PRIMARY KEY, `serverName` varchar(255), `description` varchar(2048), `gamePort` INT, `gameAddress` varchar(255), `protocolVersion` INT, `programVersion` varchar(255), `maxPlayers` INT, `players` varchar(2048), `modControl` INT, `modControlSha` varchar(255), `gameMode` INT, `cheats` INT, `warpMode` INT, `universeSize` INT, `banner` varchar(255), `homepage` varchar(255), `httpPort` INT, `admin` varchar(255), `team` varchar(255), `location` varchar(255), `fixedIP` INT) ENGINE=MyISAM CHARSET=UTF8; ");
         }
 
         private static void ConnectClient(ClientObject newClient)
@@ -90,14 +97,15 @@ namespace DMPServerReportingReceiver
 
         private static void ExpireAllOnlineServers()
         {
-            databaseConnection.ExecuteNonReader("CALL gameserverscleanup()");
+            databaseConnection.ExecuteNonReader("DELETE FROM DMPServerList");
         }
 
         private static void CallServerOffline(string hash)
         {
+            Console.WriteLine("Disconnecting " + hash);
             Dictionary<string, object> offlineParams = new Dictionary<string, object>();
-            offlineParams["@hash"] = hash;
-            string mySql = "CALL gameserveroffline(@hash)";
+            offlineParams["@serverHash"] = hash;
+            string mySql = "DELETE FROM DMPServerList WHERE  serverHash=@serverHash";
             databaseConnection.ExecuteNonReader(mySql, offlineParams);
         }
 
@@ -109,6 +117,21 @@ namespace DMPServerReportingReceiver
                 {
                     if (programClock.ElapsedMilliseconds > (client.lastReceiveTime + CONNECTION_TIMEOUT))
                     {
+                        DisconnectClient(client);
+                    }
+                }
+            }
+        }
+
+        public static void DisconnectClientsWithHash(string serverHash)
+        {
+            lock (clients)
+            {
+                foreach (ClientObject client in clients.ToArray())
+                {
+                    if (client.initialized && client.serverHash == serverHash)
+                    {
+                        Console.WriteLine("Disconnecting client because they are using the same server hash");
                         DisconnectClient(client);
                     }
                 }

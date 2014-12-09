@@ -51,7 +51,7 @@ namespace DMPServerReportingReceiver
 
         public string ToConnectionString()
         {
-            return "Server=" + host + ";Database=" + database + ";Uid=" + username + ";Pwd=" + password + ";";
+            return "Server=" + host + ";Database=" + database + ";Uid=" + username + ";Pwd=" + password + ";Pooling=True;";
         }
     }
 }

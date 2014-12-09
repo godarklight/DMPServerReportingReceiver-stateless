@@ -57,14 +57,16 @@ namespace DMPServerReportingReceiver
                 //Initialize if needed
                 if (!client.initialized)
                 {
+                    MainClass.DisconnectClientsWithHash(serverHash);
                     client.initialized = true;
-                    string sqlQuery = "CALL gameserverinit(@serverhash, @namex, @descriptionx, @gameportx, @gameaddressx, @protocolx, @programversion, @maxplayersx, @modcontrolx, @modcontrolshax, @gamemodex, @cheatsx, @warpmodex, @universex, @bannerx, @homepagex, @httpportx, @adminx, @teamx, @locationx, @fixedipx);";
+                    //string sqlQuery = "CALL gameserverinit(@serverhash, @namex, @descriptionx, @gameportx, @gameaddressx, @protocolx, @programversion, @maxplayersx, @modcontrolx, @modcontrolshax, @gamemodex, @cheatsx, @warpmodex, @universex, @bannerx, @homepagex, @httpportx, @adminx, @teamx, @locationx, @fixedipx);";
+                    string sqlQuery = "INSERT INTO " + databaseConnection.settings.database + " (`serverHash`, `serverName`, `description`, `gamePort`, `gameAddress`, `protocolVersion`, `programVersion`, `maxPlayers`, `modControl`, `modControlSha`, `gameMode`, `cheats`, `warpMode`, `universeSize`, `banner`, `homepage`, `httpPort`, `admin`, `team`, `location`, `fixedIP`) VALUES (@serverhash, @namex, @descriptionx, @gameportx, @gameaddressx, @protocolx, @programversion, @maxplayersx, @modcontrolx, @modcontrolshax, @gamemodex, @cheatsx, @warpmodex, @universex, @bannerx, @homepagex, @httpportx, @adminx, @teamx, @locationx, @fixedipx)";
                     Dictionary<string, object> parameters = new Dictionary<string, object>();
                     parameters["@serverhash"] = serverHash;
                     parameters["@namex"] = serverName;
                     if (serverName.Length > 255)
                     {
-                        serverName.Substring(0, 255);
+                        serverName = serverName.Substring(0, 255);
                     }
                     parameters["@descriptionx"] = description;
                     parameters["@gameportx"] = gamePort;
@@ -89,67 +91,16 @@ namespace DMPServerReportingReceiver
                     databaseConnection.ExecuteNonReader(sqlQuery, parameters);
                 }
 
-                if (client.connectedPlayers == null)
+                foreach (string player in players)
                 {
-                    //Report connected players as connected
-                    foreach (string connectedPlayer in players)
-                    {
-                        Console.WriteLine("Player " + connectedPlayer + " joined " + serverHash);
-                        Dictionary<string, object> playerParams = new Dictionary<string, object>();
-                        playerParams["@hash"] = serverHash;
-                        playerParams["@player"] = connectedPlayer;
-                        string sqlQuery = "CALL gameserverplayer(@hash, @player, '1')";
-                        databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
-                    }
+                    Console.WriteLine(serverHash + ": " + player);
                 }
-                else
-                {
-                    foreach (string player in players)
-                    {
-                        Console.WriteLine("Player: " + player);
-                    }
-                    //Take all the currently connected players and remove the players that were connected already to generate a list of players to be added
-                    List<string> addList = new List<string>(players);
-                    foreach (string player in client.connectedPlayers)
-                    {
-                        if (addList.Contains(player))
-                        {
-                            addList.Remove(player);
-                        }
-                    }
-                    //Take all the old players connected and remove the players that are connected already to generate a list of players to be removed
-                    List<string> removeList = new List<string>(client.connectedPlayers);
-                    foreach (string player in players)
-                    {
-                        if (removeList.Contains(player))
-                        {
-                            removeList.Remove(player);
-                        }
-                    }
-                    //Add new players
-                    foreach (string player in addList)
-                    {
-                        Console.WriteLine("Player " + player + " joined " + serverHash);
-                        Dictionary<string, object> playerParams = new Dictionary<string, object>();
-                        playerParams["hash"] = serverHash;
-                        playerParams["player"] = player;
-                        string sqlQuery = "CALL gameserverplayer(@hash ,@player, '1')";
-                        databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
-                    }
-                    //Remove old players
-                    foreach (string player in removeList)
-                    {
-                        Console.WriteLine("Player " + player + " left " + serverHash);
-                        Dictionary<string, object> playerParams = new Dictionary<string, object>();
-                        playerParams["hash"] = serverHash;
-                        playerParams["player"] = player;
-                        string sqlQuery = "CALL gameserverplayer(@hash ,@player, '0')";
-                        databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
-                    }
-                }
-                //Save connected players for tracking
-                client.connectedPlayers = players;
-
+                string playerSqlCommand = "UPDATE DMPServerList SET players=@players WHERE `serverHash`=@serverHash";
+                Dictionary<string, object> playerParameters = new Dictionary<string, object>();
+                playerParameters.Add("@serverHash", serverHash);
+                string currentPlayers = String.Join("\n", players) + "\n";
+                playerParameters.Add("@players", currentPlayers);
+                databaseConnection.ExecuteNonReader(playerSqlCommand, playerParameters);
                 sw.Stop();
                 Console.WriteLine("Handled report from " + serverName + " (" + client.address + "), Protocol " + protocolVersion + ", Program Version: " + programVersion + ", Time: " + sw.ElapsedMilliseconds);
             }
@@ -192,14 +143,16 @@ namespace DMPServerReportingReceiver
                 //Initialize if needed
                 if (!client.initialized)
                 {
+                    MainClass.DisconnectClientsWithHash(serverHash);
                     client.initialized = true;
-                    string sqlQuery = "CALL gameserverinit(@serverhash, @namex, @descriptionx, @gameportx, @gameaddressx, @protocolx, @programversion, @maxplayersx, @modcontrolx, @modcontrolshax, @gamemodex, @cheatsx, @warpmodex, @universex, @bannerx, @homepagex, @httpportx, @adminx, @teamx, @locationx, @fixedipx);";
+                    //string sqlQuery = "CALL gameserverinit(@serverhash, @namex, @descriptionx, @gameportx, @gameaddressx, @protocolx, @programversion, @maxplayersx, @modcontrolx, @modcontrolshax, @gamemodex, @cheatsx, @warpmodex, @universex, @bannerx, @homepagex, @httpportx, @adminx, @teamx, @locationx, @fixedipx);";
+                    string sqlQuery = "INSERT INTO " + databaseConnection.settings.database + " (`serverHash`, `serverName`, `description`, `gamePort`, `gameAddress`, `protocolVersion`, `programVersion`, `maxPlayers`, `modControl`, `modControlSha`, `gameMode`, `cheats`, `warpMode`, `universeSize`, `banner`, `homepage`, `httpPort`, `admin`, `team`, `location`, `fixedIP`) VALUES (@serverhash, @namex, @descriptionx, @gameportx, @gameaddressx, @protocolx, @programversion, @maxplayersx, @modcontrolx, @modcontrolshax, @gamemodex, @cheatsx, @warpmodex, @universex, @bannerx, @homepagex, @httpportx, @adminx, @teamx, @locationx, @fixedipx)";
                     Dictionary<string, object> parameters = new Dictionary<string, object>();
                     parameters["@serverhash"] = serverHash;
                     parameters["@namex"] = serverName;
                     if (serverName.Length > 255)
                     {
-                        serverName.Substring(0, 255);
+                        serverName = serverName.Substring(0, 255);
                     }
                     parameters["@descriptionx"] = description;
                     parameters["@gameportx"] = gamePort;
@@ -224,67 +177,16 @@ namespace DMPServerReportingReceiver
                     databaseConnection.ExecuteNonReader(sqlQuery, parameters);
                 }
 
-                if (client.connectedPlayers == null)
+                foreach (string player in players)
                 {
-                    //Report connected players as connected
-                    foreach (string connectedPlayer in players)
-                    {
-                        Console.WriteLine("Player " + connectedPlayer + " joined " + serverHash);
-                        Dictionary<string, object> playerParams = new Dictionary<string, object>();
-                        playerParams["@hash"] = serverHash;
-                        playerParams["@player"] = connectedPlayer;
-                        string sqlQuery = "CALL gameserverplayer(@hash, @player, '1')";
-                        databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
-                    }
+                    Console.WriteLine(serverHash + ": " + player);
                 }
-                else
-                {
-                    foreach (string player in players)
-                    {
-                        Console.WriteLine("Player: " + player);
-                    }
-                    //Take all the currently connected players and remove the players that were connected already to generate a list of players to be added
-                    List<string> addList = new List<string>(players);
-                    foreach (string player in client.connectedPlayers)
-                    {
-                        if (addList.Contains(player))
-                        {
-                            addList.Remove(player);
-                        }
-                    }
-                    //Take all the old players connected and remove the players that are connected already to generate a list of players to be removed
-                    List<string> removeList = new List<string>(client.connectedPlayers);
-                    foreach (string player in players)
-                    {
-                        if (removeList.Contains(player))
-                        {
-                            removeList.Remove(player);
-                        }
-                    }
-                    //Add new players
-                    foreach (string player in addList)
-                    {
-                        Console.WriteLine("Player " + player + " joined " + serverHash);
-                        Dictionary<string, object> playerParams = new Dictionary<string, object>();
-                        playerParams["hash"] = serverHash;
-                        playerParams["player"] = player;
-                        string sqlQuery = "CALL gameserverplayer(@hash ,@player, '1')";
-                        databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
-                    }
-                    //Remove old players
-                    foreach (string player in removeList)
-                    {
-                        Console.WriteLine("Player " + player + " left " + serverHash);
-                        Dictionary<string, object> playerParams = new Dictionary<string, object>();
-                        playerParams["hash"] = serverHash;
-                        playerParams["player"] = player;
-                        string sqlQuery = "CALL gameserverplayer(@hash ,@player, '0')";
-                        databaseConnection.ExecuteNonReader(sqlQuery, playerParams);
-                    }
-                }
-                //Save connected players for tracking
-                client.connectedPlayers = players;
-
+                string playerSqlCommand = "UPDATE DMPServerList SET players=@players WHERE `serverHash`=@serverHash";
+                Dictionary<string, object> playerParameters = new Dictionary<string, object>();
+                playerParameters.Add("@serverHash", serverHash);
+                string currentPlayers = String.Join("\n", players) + "\n";
+                playerParameters.Add("@players", currentPlayers);
+                databaseConnection.ExecuteNonReader(playerSqlCommand, playerParameters);
                 sw.Stop();
                 Console.WriteLine("Handled report from " + serverName + " (" + client.address + "), Protocol " + protocolVersion + ", Program Version: " + programVersion + ", Time: " + sw.ElapsedMilliseconds);
             }
